@@ -1,0 +1,401 @@
+using SPTarkov.DI.Annotations;
+using SPTarkov.Server.Core.DI;
+using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Models.Spt.Mod;
+using SPTarkov.Server.Core.Models.Utils;
+using SPTarkov.Server.Core.Services;
+using SPTarkov.Server.Core.Models.Eft.Hideout;
+using System.Reflection;
+using System.Text.Json;
+
+namespace DoorBreacher
+{
+    public record ModMetadata : AbstractModMetadata
+    {
+        public override string ModGuid { get; init; } = "com.dvize.doorbreacher";
+        public override string Name { get; init; } = "DoorBreacher";
+        public override string Author { get; init; } = "dvize";
+        public override List<string>? Contributors { get; init; } = new List<string> { "Props", "Tron", "MakerMacher" };
+        public override SemanticVersioning.Version Version { get; init; } = new("2.0.0");
+        public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
+        public override List<string>? Incompatibilities { get; init; }
+        public override Dictionary<string, SemanticVersioning.Range>? ModDependencies { get; init; }
+        public override string? Url { get; init; } = "https://github.com/dvize/BackdoorBandit";
+        public override bool? IsBundleMod { get; init; } = true;
+        public override string? License { get; init; } = "MIT";
+    }
+
+    [Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 1)]
+    public class DoorBreacherMain(
+        ISptLogger<DoorBreacherMain> logger,
+        ModHelper modHelper,
+        DatabaseService databaseService) : IOnLoad
+    {
+        private readonly ISptLogger<DoorBreacherMain> _logger = logger;
+        private readonly ModHelper _modHelper = modHelper;
+        private readonly DatabaseService _databaseService = databaseService;
+
+        public Task OnLoad()
+        {
+            try
+            {
+                var pathToMod = _modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
+
+                // Load items JSON
+                var itemsData = _modHelper.GetJsonDataFromFile<Dictionary<string, dynamic>>(pathToMod, "database/templates/items.json");
+
+                // Add custom items to database
+                AddCustomItemsToDatabase(itemsData);
+
+                // NOTE: Skipping weapon ammo modification for now - need to determine correct property structure
+                // ModifyAmmoPropertiesForWeapons(itemsData);
+                _logger.Warning("Weapon ammo modification temporarily disabled - items must be manually added to weapons");
+
+                // Add hideout recipes
+                AddHideoutRecipes(pathToMod);
+
+                // NOTE: Skipping trader assortments for now - property structure differs between client and server
+                // AddTraderAssortments(itemsData);
+                _logger.Warning("Trader assortments temporarily disabled - items available via bundles only");
+
+                _logger.Success("DoorBreacher mod loaded successfully!");
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error loading DoorBreacher mod: {ex.Message}");
+                _logger.Error($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
+        }
+
+        private void AddCustomItemsToDatabase(Dictionary<string, dynamic> itemsData)
+        {
+            var tables = _databaseService.GetTables();
+            int itemsAdded = 0;
+
+            foreach (var itemPair in itemsData)
+            {
+                string itemId = itemPair.Key;
+                dynamic itemElement = itemPair.Value;
+
+                try
+                {
+                    // For JsonElement, deserialize to JSON string then back to dynamic
+                    string jsonString = JsonSerializer.Serialize(itemElement);
+                    dynamic itemData = JsonSerializer.Deserialize<dynamic>(jsonString);
+
+                    // Extract the _id from the item
+                    JsonElement jsonElem = itemElement;
+                    if (jsonElem.TryGetProperty("_id", out var idElement))
+                    {
+                        string itemTemplateId = idElement.GetString() ?? "";
+
+                        // Add item to Templates.Items dictionary
+                        if (!string.IsNullOrEmpty(itemTemplateId) && !tables.Templates.Items.ContainsKey(itemTemplateId))
+                        {
+                            // Add as dynamic object
+                            tables.Templates.Items[itemTemplateId] = itemData;
+                            itemsAdded++;
+                            _logger.Info($"Added custom item: {itemId} (ID: {itemTemplateId})");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Failed to add item {itemId}: {ex.Message}");
+                }
+            }
+
+            _logger.Success($"Added {itemsAdded} custom items to database");
+        }
+
+        private void ModifyAmmoPropertiesForWeapons(Dictionary<string, dynamic> itemsData)
+        {
+            var tables = _databaseService.GetTables();
+
+            // Extract door breacher ID from JsonElement
+            string doorBreacherId = "";
+            if (itemsData.TryGetValue("doorbreacher", out var doorbreacherElement))
+            {
+                JsonElement doorbreacherJson = doorbreacherElement;
+                if (doorbreacherJson.TryGetProperty("_id", out var idElement))
+                {
+                    doorBreacherId = idElement.GetString() ?? "";
+                }
+            }
+
+            if (string.IsNullOrEmpty(doorBreacherId))
+            {
+                _logger.Error("Door breacher ID is null or empty");
+                return;
+            }
+
+            int weaponsModified = 0;
+
+            // Iterate through all items in the database
+            foreach (var itemPair in tables.Templates.Items)
+            {
+                dynamic item = itemPair.Value;
+
+                // Check Chambers property (using Props instead of _props for SPT 4.0.4)
+                if (item.Props?.Chambers != null)
+                {
+                    foreach (var chamber in item.Props.Chambers)
+                    {
+                        if (chamber.Props?.filters != null && Is12GaugeAmmo(chamber.Props.filters))
+                        {
+                            AddDoorBreacherToFilter(chamber.Props.filters, doorBreacherId);
+                            weaponsModified++;
+                            _logger.Debug($"Added DoorBreacher to {item.Name} Chambers");
+                        }
+                    }
+                }
+
+                // Check Cartridges property
+                if (item.Props?.Cartridges?.Props?.filters != null && Is12GaugeAmmo(item.Props.Cartridges.Props.filters))
+                {
+                    AddDoorBreacherToFilter(item.Props.Cartridges.Props.filters, doorBreacherId);
+                    weaponsModified++;
+                    _logger.Debug($"Added DoorBreacher to {item.Name} Cartridges");
+                }
+
+                // Check Slots for camora (revolvers)
+                if (item.Props?.Slots != null)
+                {
+                    foreach (var slot in item.Props.Slots)
+                    {
+                        if (slot.Props?.filters != null && Is12GaugeAmmo(slot.Props.filters))
+                        {
+                            AddDoorBreacherToFilter(slot.Props.filters, doorBreacherId);
+                            weaponsModified++;
+                            _logger.Debug($"Added DoorBreacher to {item.Name} Slot: {slot.Name}");
+                        }
+                    }
+                }
+            }
+
+            _logger.Info($"DoorBreacher: Modified {weaponsModified} weapon ammo properties");
+        }
+
+        private bool Is12GaugeAmmo(dynamic filters)
+        {
+            if (filters == null) return false;
+
+            try
+            {
+                foreach (var filter in filters)
+                {
+                    if (filter.Filter != null)
+                    {
+                        foreach (var ammoId in filter.Filter)
+                        {
+                            if (ammoId?.ToString() == "560d5e524bdc2d25448b4571") // 12/70 buckshot ID
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
+            return false;
+        }
+
+        private void AddDoorBreacherToFilter(dynamic filters, string doorBreacherId)
+        {
+            if (filters == null || filters.Count == 0) return;
+
+            try
+            {
+                var firstFilter = filters[0];
+                if (firstFilter.Filter != null)
+                {
+                    // Check if it's already in the filter
+                    foreach (var id in firstFilter.Filter)
+                    {
+                        if (id?.ToString() == doorBreacherId)
+                            return; // Already added
+                    }
+
+                    // Add the door breacher ID
+                    firstFilter.Filter.Add(doorBreacherId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Could not add door breacher to filter: {ex.Message}");
+            }
+        }
+
+        private void AddHideoutRecipes(string pathToMod)
+        {
+            var tables = _databaseService.GetTables();
+            var customRecipes = _modHelper.GetJsonDataFromFile<List<HideoutProduction>>(pathToMod, "database/templates/craftingItem.json");
+
+            int recipesBefore = tables.Hideout.Production.Recipes.Count;
+
+            foreach (var recipe in customRecipes)
+            {
+                tables.Hideout.Production.Recipes.Add(recipe);
+            }
+
+            int recipesAfter = tables.Hideout.Production.Recipes.Count;
+            _logger.Info($"Added {recipesAfter - recipesBefore} custom hideout recipes");
+        }
+
+        private void AddTraderAssortments(Dictionary<string, dynamic> itemsData)
+        {
+            var tables = _databaseService.GetTables();
+            string mechanicTraderId = "5a7c2eca46aef81a7ca2145d"; // Mechanic trader ID
+            string electricWireId = "5c06779c86f77426e00dd782"; // Bundle of wires
+
+            // Extract door breacher ID from JsonElement
+            string doorBreacherId = "";
+            if (itemsData.TryGetValue("doorbreacher", out var doorbreacherElement))
+            {
+                JsonElement doorbreacherJson = doorbreacherElement;
+                if (doorbreacherJson.TryGetProperty("_id", out var idElement))
+                {
+                    doorBreacherId = idElement.GetString() ?? "";
+                }
+            }
+
+            if (string.IsNullOrEmpty(doorBreacherId))
+            {
+                _logger.Warning("Door breacher ID not found, skipping trader assortments");
+                return;
+            }
+
+            if (!tables.Traders.ContainsKey(mechanicTraderId))
+            {
+                _logger.Error($"Mechanic trader not found with ID: {mechanicTraderId}");
+                return;
+            }
+
+            var mechanic = tables.Traders[mechanicTraderId];
+
+            // Add door breacher round for cash
+            AddTraderAssort(mechanic, doorBreacherId, 10000, "RUB", 1, 100, true);
+
+            // Add door breacher round for barter (electric wire)
+            AddTraderBarter(mechanic, doorBreacherId, electricWireId, 1, 1, 100, true);
+
+            _logger.Info("Added trader assortments for DoorBreacher items");
+        }
+
+        private void AddTraderAssort(dynamic trader, string itemId, int price, string currency, int loyaltyLevel, int stackCount, bool unlimited)
+        {
+            string assortId = Guid.NewGuid().ToString();
+
+            // Use PascalCase property names for SPT 4.0.4
+            // Initialize BarterScheme if needed
+            if (trader.Assort.BarterScheme == null)
+            {
+                trader.Assort.BarterScheme = new Dictionary<string, dynamic>();
+            }
+
+            // Initialize LoyaltyItems if needed (note: LoyalTY not just Loyal)
+            if (trader.Assort.LoyaltyItems == null)
+            {
+                trader.Assort.LoyaltyItems = new Dictionary<string, int>();
+            }
+
+            // Add to BarterScheme
+            trader.Assort.BarterScheme[assortId] = new object[]
+            {
+                new object[]
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["count"] = price,
+                        ["_tpl"] = GetCurrencyId(currency)
+                    }
+                }
+            };
+
+            // Add to LoyaltyItems
+            trader.Assort.LoyaltyItems[assortId] = loyaltyLevel;
+
+            // Add to Items
+            var assortItem = new Dictionary<string, object>
+            {
+                ["_id"] = assortId,
+                ["_tpl"] = itemId,
+                ["parentId"] = "hideout",
+                ["slotId"] = "hideout",
+                ["upd"] = new Dictionary<string, object>
+                {
+                    ["StackObjectsCount"] = stackCount,
+                    ["UnlimitedCount"] = unlimited
+                }
+            };
+
+            trader.Assort.Items.Add(assortItem);
+        }
+
+        private void AddTraderBarter(dynamic trader, string itemId, string barterItemId, int barterCount, int loyaltyLevel, int stackCount, bool unlimited)
+        {
+            string assortId = Guid.NewGuid().ToString();
+
+            // Use PascalCase property names for SPT 4.0.4
+            // Initialize BarterScheme if needed
+            if (trader.Assort.BarterScheme == null)
+            {
+                trader.Assort.BarterScheme = new Dictionary<string, dynamic>();
+            }
+
+            // Initialize LoyaltyItems if needed (note: LoyalTY not just Loyal)
+            if (trader.Assort.LoyaltyItems == null)
+            {
+                trader.Assort.LoyaltyItems = new Dictionary<string, int>();
+            }
+
+            // Add to BarterScheme
+            trader.Assort.BarterScheme[assortId] = new object[]
+            {
+                new object[]
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["count"] = barterCount,
+                        ["_tpl"] = barterItemId
+                    }
+                }
+            };
+
+            // Add to LoyaltyItems
+            trader.Assort.LoyaltyItems[assortId] = loyaltyLevel;
+
+            // Add to Items
+            var assortItem = new Dictionary<string, object>
+            {
+                ["_id"] = assortId,
+                ["_tpl"] = itemId,
+                ["parentId"] = "hideout",
+                ["slotId"] = "hideout",
+                ["upd"] = new Dictionary<string, object>
+                {
+                    ["StackObjectsCount"] = stackCount,
+                    ["UnlimitedCount"] = unlimited
+                }
+            };
+
+            trader.Assort.Items.Add(assortItem);
+        }
+
+        private string GetCurrencyId(string currency)
+        {
+            return currency.ToUpper() switch
+            {
+                "RUB" or "ROUBLES" => "5449016a4bdc2d6f028b456f",
+                "USD" or "DOLLARS" => "5696686a4bdc2da3298b456a",
+                "EUR" or "EUROS" => "569668774bdc2da2298b4568",
+                _ => "5449016a4bdc2d6f028b456f" // Default to roubles
+            };
+        }
+    }
+}

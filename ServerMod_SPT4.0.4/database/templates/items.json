@@ -1,8 +1,8 @@
 {
   "doorbreacher": {
-    "_id": "660249a0712c1005a4a3ab41", //unique mongo id for doorbreacher shell
+    "_id": "660249a0712c1005a4a3ab41",
     "_name": "doorbreacher",
-    "_parent": "5485a8684bdc2da71d8b4567", //ammo
+    "_parent": "5485a8684bdc2da71d8b4567",
     "_type": "Item",
     "_props": {
       "Name": "12x70 Breaching Round",
@@ -75,7 +75,7 @@
       "PenetrationPowerDiviation": 1,
       "ammoHear": 0,
       "ammoSfx": "standart",
-      "MisfireChance": 0.00,
+      "MisfireChance": 0.0,
       "MinFragmentsCount": 1,
       "MaxFragmentsCount": 1,
       "ammoShiftChance": 0,
@@ -133,13 +133,12 @@
       "MalfFeedChance": 0,
       "RemoveShellAfterFire": false
     },
-    "_proto": "560d5e524bdc2d25448b4571" //12/70 buckshot
+    "_proto": "560d5e524bdc2d25448b4571"
   },
-
   "doorbreacherbox": {
-    "_id": "660ed60d5effc350b86bb289",  //unique mongo id for doorbreacher box
+    "_id": "660ed60d5effc350b86bb289",
     "_name": "doorbreacherbox",
-    "_parent": "543be5cb4bdc2deb348b4568", // Ammo Box
+    "_parent": "543be5cb4bdc2deb348b4568",
     "_type": "Item",
     "_props": {
       "Name": "ammo_box_12x70_default",
@@ -202,89 +201,86 @@
       "StackSlots": [
         {
           "_name": "cartridges",
-          "_id": "6627cd20915ff02066761f3f", //? unique id for stack slot
-          "_parent": "660ed60d5effc350b86bb289", //doorbreacher box
+          "_id": "6627cd20915ff02066761f3f",
+          "_parent": "660ed60d5effc350b86bb289",
           "_max_count": 5,
           "_props": {
             "filters": [
               {
                 "Filter": [
-                  "660249a0712c1005a4a3ab41" //doorbreacher shell
+                  "660249a0712c1005a4a3ab41"
                 ]
               }
             ]
           },
-          "_proto": "5748538b2459770af276a261"  //??
+          "_proto": "5748538b2459770af276a261"
         }
       ]
     }
   },
-
-  "C4Explosive":{
-      "_id": "6636606320e842b50084e51a", //unique mongo id for c4explosive
-      "_name": "C4Explosive",
-      "_parent": "57864e4c24597754843f8723", //lubricant
-      "_type": "Item",
-      "_props": {
-        "Name": "C4 Explosive",
-        "ShortName": "C4 Explosive",
-        "Description": "C4 Explosive",
-        "Weight": 0.6,
-        "BackgroundColor": "blue",
-        "Width": 2,
-        "Height": 1,
-        "StackMaxSize": 1,
-        "ItemSound": "generic",
-        "Prefab": {
-          "path": "C4Explosive.bundle",
-          "rcid": ""
-        },
-        "UsePrefab": {
-          "path": "",
-          "rcid": ""
-        },
-        "StackObjectsCount": 1,
-        "NotShownInSlot": false,
-        "ExaminedByDefault": true,
-        "ExamineTime": 1,
-        "IsUndiscardable": false,
-        "IsUnsaleable": false,
-        "IsUnbuyable": false,
-        "IsUngivable": false,
-        "IsLockedafterEquip": false,
-        "QuestItem": false,
-        "LootExperience": 20,
-        "ExamineExperience": 10,
-        "HideEntrails": false,
-        "RepairCost": 0,
-        "RepairSpeed": 0,
-        "ExtraSizeLeft": 0,
-        "ExtraSizeRight": 0,
-        "ExtraSizeUp": 0,
-        "ExtraSizeDown": 0,
-        "ExtraSizeForceAdd": false,
-        "MergesWithChildren": false,
-        "CanSellOnRagfair": true,
-        "CanRequireOnRagfair": false,
-        "ConflictingItems": [],
-        "Unlootable": false,
-        "UnlootableFromSlot": "FirstPrimaryWeapon",
-        "UnlootableFromSide": [],
-        "AnimationVariantsNumber": 0,
-        "DiscardingBlock": false,
-        "RagFairCommissionModifier": 1,
-        "IsAlwaysAvailableForInsurance": false,
-        "DiscardLimit": 0,
-        "DropSoundType": "None",
-        "InsuranceDisabled": false,
-        "QuestStashMaxCount": 0,
-        "IsSpecialSlotOnly": false,
-        "IsUnremovable": false,
-        "MaxResource": 0,
-        "Resource": 0
+  "C4Explosive": {
+    "_id": "6636606320e842b50084e51a",
+    "_name": "C4Explosive",
+    "_parent": "57864e4c24597754843f8723",
+    "_type": "Item",
+    "_props": {
+      "Name": "C4 Explosive",
+      "ShortName": "C4 Explosive",
+      "Description": "C4 Explosive",
+      "Weight": 0.6,
+      "BackgroundColor": "blue",
+      "Width": 2,
+      "Height": 1,
+      "StackMaxSize": 1,
+      "ItemSound": "generic",
+      "Prefab": {
+        "path": "C4Explosive.bundle",
+        "rcid": ""
       },
-      "_proto": "590a373286f774287540368b"
-    }
-  
+      "UsePrefab": {
+        "path": "",
+        "rcid": ""
+      },
+      "StackObjectsCount": 1,
+      "NotShownInSlot": false,
+      "ExaminedByDefault": true,
+      "ExamineTime": 1,
+      "IsUndiscardable": false,
+      "IsUnsaleable": false,
+      "IsUnbuyable": false,
+      "IsUngivable": false,
+      "IsLockedafterEquip": false,
+      "QuestItem": false,
+      "LootExperience": 20,
+      "ExamineExperience": 10,
+      "HideEntrails": false,
+      "RepairCost": 0,
+      "RepairSpeed": 0,
+      "ExtraSizeLeft": 0,
+      "ExtraSizeRight": 0,
+      "ExtraSizeUp": 0,
+      "ExtraSizeDown": 0,
+      "ExtraSizeForceAdd": false,
+      "MergesWithChildren": false,
+      "CanSellOnRagfair": true,
+      "CanRequireOnRagfair": false,
+      "ConflictingItems": [],
+      "Unlootable": false,
+      "UnlootableFromSlot": "FirstPrimaryWeapon",
+      "UnlootableFromSide": [],
+      "AnimationVariantsNumber": 0,
+      "DiscardingBlock": false,
+      "RagFairCommissionModifier": 1,
+      "IsAlwaysAvailableForInsurance": false,
+      "DiscardLimit": 0,
+      "DropSoundType": "None",
+      "InsuranceDisabled": false,
+      "QuestStashMaxCount": 0,
+      "IsSpecialSlotOnly": false,
+      "IsUnremovable": false,
+      "MaxResource": 0,
+      "Resource": 0
+    },
+    "_proto": "590a373286f774287540368b"
+  }
 }
-

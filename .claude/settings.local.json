@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(dotnet build:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(zip -r:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(\"C:/Program Files/7-Zip/7z.exe\" a:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

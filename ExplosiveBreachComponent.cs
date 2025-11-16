@@ -62,7 +62,7 @@ namespace BackdoorBandit
             {
                 yield return uwr.SendWebRequest();
 
-                if (uwr.isNetworkError || uwr.isHttpError)
+                if (uwr.result == UnityWebRequest.Result.ConnectionError || uwr.result == UnityWebRequest.Result.ProtocolError)
                 {
                     Logger.LogError($"Error loading audio clip: {uwr.error}");
                 }
@@ -134,7 +134,7 @@ namespace BackdoorBandit
                 // Attempt to safely access door.Handle
                 doorHandleTransform = door.Handle?.transform;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 //Logger.LogError($"Failed to access door handle: {ex.Message}");
             }
@@ -197,7 +197,7 @@ namespace BackdoorBandit
             if (foundItem == null) return;
 
             TraderControllerClass traderController = (TraderControllerClass)foundItem.Parent.GetOwner();
-            GStruct455<GClass3200> discardResult = InteractionsHandlerClass.Discard(foundItem, traderController, false);
+            GStruct154<GClass3408> discardResult = InteractionsHandlerClass.Discard(foundItem, traderController, false);
 
             if (discardResult.Error != null)
             {
